@@ -34,13 +34,13 @@ def cmd(src, out, overwrite):
     for parent, dirs, files in os.walk(src):
         for d in dirs:
             p = Path(os.path.join(parent, d))
-            o = Path('out')/p.relative_to(src)
+            o = Path(out)/p.relative_to(src)
             os.makedirs(o, exist_ok=True)
 
             
         for f in files:
             p = Path(os.path.join(parent, f))
-            o = Path('out')/p.relative_to(src).with_suffix('.png')
+            o = Path(out)/p.relative_to(src).with_suffix('.png')
 
             if not overwrite and o.exists():
                 continue
@@ -61,6 +61,7 @@ def cmd(src, out, overwrite):
         
 
 def endo_image_crop(src,out):
+    #print(src,out)
     i = cv2.imread(str(src))
     # grayscale
     ip = cv2.cvtColor(i, cv2.COLOR_BGR2GRAY)
@@ -70,7 +71,7 @@ def endo_image_crop(src,out):
     _, ip = cv2.threshold(ip, 10, 255, cv2.THRESH_BINARY)
     
     ct,_ = cv2.findContours(ip, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    ii = np.copy(i)
+    #ii = np.copy(i)
 
     cnt = max(ct, key=lambda cnt: cv2.contourArea(cnt))
     x,y,w,h = cv2.boundingRect(cnt)
