@@ -1,26 +1,27 @@
-#!/usr/bin/env python3
 import click
 import os, functools
 from pathlib import Path
 import concurrent.futures
 import tqdm
-#import numpy as np
 import cv2
 
 class Mask:
-    def __init__(self, mask_file):
+    def __init__(self, mask_file, shape):
         self._mask = cv2.imread(str(mask_file))
+        if self._mask is None:
+            raise ValueError(f"Failed to load mask file '{str(mask_file)}'")
         self._shape = self._mask.shape
+        if shape is not None and self._shape != shape:
+            raise ValueError(f"shape of '{str(mask_file)}' is expected to be {shape}, but {self._shape}")
+
+    def is_same_shape(self, image):
+        return image.shape == self._shape
 
     def mask(self, image):
-        assert image.shape == self._shape
         return cv2.bitwise_and(image, self._mask)
 
-_mask_fuji = Mask(Path(__file__).parent/'mask_fuji.png')
-_mask_cce = Mask(Path(__file__).parent/'mask_cce.png')
-
-assert _mask_fuji._shape == (1024, 1280, 3)
-assert _mask_cce._shape == (512, 512, 3)
+_mask_fuji = Mask(Path(__file__).parent/'mask_fuji.png', (1024, 1280, 3))
+_mask_cce = Mask(Path(__file__).parent/'mask_cce.png', (512, 512, 3))
 
 def conv_endocrop(image):
     i = image
@@ -42,10 +43,10 @@ def conv_endocrop(image):
 def convert(src, out, flag_endocrop, flag_maskfuji, flag_maskcce):
     i = cv2.imread(str(src))
 
-    if flag_maskfuji:
+    if flag_maskfuji and _mask_fuji.is_same_shape(i):
         i = _mask_fuji.mask(i)
 
-    if flag_maskcce:
+    if flag_maskcce and _mask_cce.is_same_shape(i):
         i = _mask_cce.mask(i)
 
     if flag_endocrop:
@@ -99,7 +100,7 @@ def walk_and_convert(src_dir, dst_dir, rename_map, function, overwrite=False, tq
 @click.argument('dst_dir')
 @click.option('--overwrite', is_flag=True)
 @click.option('--endocrop/--no-endocrop', default=True)
-@click.option('--maskfuji', is_flag=True)
+@click.option('--maskfuji/--no-maskfuji', default=True)
 @click.option('--maskcce', is_flag=True)
 def command(src_dir, dst_dir, overwrite, endocrop, maskfuji, maskcce):
     def rename_map(path):
